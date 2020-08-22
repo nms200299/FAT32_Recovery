@@ -36,6 +36,9 @@ int main(){
         return -1;
     }
 
+    int ClusterPerSector;
+    ClusterPerSector = buf[13];
+
     int ReservedSec;
     ReservedSec = buf[15] * 16 * 16;
     ReservedSec = ReservedSec + buf[14];
@@ -57,27 +60,57 @@ int main(){
     SetFilePointerEx(fp, loc, 0, 0);
     ReadFile(fp,buf,512,0,0);
 
-    int i, offset, FileSize;
+    int i, offset;
     for(i=0; i<=15; i++){
         offset = i * 32;
-        if (buf[offset] == 229){ // 삭제된 파일일시,
-            if (buf[offset+11] != 32){ // 파일이면,
-                FileSize = buf[offset+31] * 16 * 16 * 16 * 16 * 16 * 16;
-                FileSize = FileSize + buf[offset+30] * 16 * 16 * 16 * 16;
-                FileSize = FileSize + buf[offset+29] * 16 * 16;
-                FileSize = FileSize + buf[offset+28];
+        if (buf[offset] == 0xE5){ // 삭제된 파일일시,
+            if (buf[offset+11] == 0x20){
+                if (buf[offset-21] != 0x0F){
+                    int FileSize;
+                    FileSize = buf[offset+31] * 16 * 16 * 16 * 16 * 16 * 16;
+                    FileSize = FileSize + buf[offset+30] * 16 * 16 * 16 * 16;
+                    FileSize = FileSize + buf[offset+29] * 16 * 16;
+                    FileSize = FileSize + buf[offset+28];
 
-                if (FileSize > 0) {
-                    
+                    if (FileSize > 0) {
+                        printf ("[FIND] 삭제된 파일을 찾았습니다.\n");
+                        printf ("       파일명: _");
+
+                        int j;
+                        for (j=1; j<=7; j++){
+                            if (buf[offset+j] == 0x20) break;
+                            printf ("%c",buf[offset+j]);
+                        } // 삭제된 파일 이름 출력
+                        printf (".");
+                        for (j=8; j<=11; j++){
+                            if (buf[offset+j] == 0x20) break;
+                            printf ("%c",buf[offset+j]);
+                        } // 삭제된 파일 확장자 출력
+                        printf ("  크기: %d Bytes",FileSize);
+                        // 삭제된 파일 크기 출력
+
+                        int Cluster;
+                        Cluster = buf[offset+21] * 16 * 16 * 16 * 16 * 16 * 16;
+                        Cluster = Cluster + buf[offset+20] * 16 * 16 * 16 * 16;
+                        Cluster = Cluster + buf[offset+27] * 16 * 16;
+                        Cluster = Cluster + buf[offset+26];
+
+                        loc.QuadPart = ((Cluster - 2) * ClusterPerSector + RootDirStr) * 512;
+                        printf(" %d \n",((Cluster - 2) * ClusterPerSector + RootDirStr) * 512);
+                        SetFilePointerEx(fp, loc, 0, 0);
+                        ReadFile(fp,buf,512,0,0);
+
+    int x;
+    for (x=0; x<=511; x++){
+        printf("%X ",buf[x]);
+    }
+                    }
                 }
             }
         }
     }
 
-    // int i;
-    // for (i=0; i<=511; i++){
-    //     printf("%X ",buf[i]);
-    // }
+
 
     CloseHandle(fp);
 }
