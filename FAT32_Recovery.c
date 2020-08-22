@@ -1,17 +1,27 @@
 #include <stdio.h>
 #include <windows.h>
 
-int main(){
+int main(int argc, char* argv[]){
+	if (argc != 2) {
+		printf ("Use : FAT32.exe <DriveName>\n");
+        printf ("(ex. FAT32.exe E");
+		return 0;
+	} // 인자 값이 부족하면 사용법을 안내한다.
+
     HANDLE fp;
     BOOL Chk;
     unsigned char buf[512]={};
+    char DrivePath[7]={};
+    strcat(DrivePath,"\\\\.\\");
+    strcat(DrivePath,argv[1]);
+    strcat(DrivePath,":");
 
-    fp = CreateFile("\\\\.\\E:", GENERIC_READ || GENERIC_WRITE, FILE_SHARE_READ || FILE_SHARE_WRITE, 0, OPEN_EXISTING, 0, 0);
+    fp = CreateFile(DrivePath, GENERIC_READ || GENERIC_WRITE, FILE_SHARE_READ || FILE_SHARE_WRITE, 0, OPEN_EXISTING, 0, 0);
     if (fp == INVALID_HANDLE_VALUE){
-        printf("[ERR] 드라이브를 읽을 수 없습니다.\n");
+        printf("[ERR] %s 드라이브를 읽을 수 없습니다.\n", argv[1]);
         return -1;
     } else {
-        printf("[INFO] 드라이브를 읽을 수 있습니다.\n");
+        printf("[INFO] %s 드라이브를 읽을 수 있습니다.\n", argv[1]);
     }
 
     Chk = ReadFile(fp,buf,512,0,0);
@@ -22,8 +32,8 @@ int main(){
         printf("[INFO] 파일 시스템 데이터를 읽어왔습니다.\n");
     }
 
-    if ((buf[82]=='F') && (buf[83]=='A') && (buf[84]=='T') && (buf[85]=='3') && (buf[86]=='2')) {
-    // File System Type 체크
+    if ((buf[0]==0xEB) && (buf[1]==0x58) && (buf[2]==0x90)) {
+    // CPU Jump Command 체크
         if ((buf[510]==0x55) && (buf[511]==0xAA)){
         // Signature 체크
             printf("[INFO] 정상적인 FAT32 파일 시스템이 맞습니다.\n");
