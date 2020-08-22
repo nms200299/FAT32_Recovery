@@ -75,18 +75,22 @@ int main(){
                     if (FileSize > 0) {
                         printf ("[FIND] 삭제된 파일을 찾았습니다.\n");
                         printf ("       파일명: _");
-
+                
                         int j;
+                        char RecoverFileName[256]={};
+                        strcat(RecoverFileName,"[Recover] _");
+
                         for (j=1; j<=7; j++){
                             if (buf[offset+j] == 0x20) break;
+                            RecoverFileName[j+10] = buf[offset+j];
                             printf ("%c",buf[offset+j]);
-                        } // 삭제된 파일 이름 출력
+                        } // 삭제된 파일 이름 추출
                         printf (".");
                         for (j=8; j<=11; j++){
                             if (buf[offset+j] == 0x20) break;
                             printf ("%c",buf[offset+j]);
-                        } // 삭제된 파일 확장자 출력
-                        printf ("  크기: %d Bytes",FileSize);
+                        } // 삭제된 파일 확장자 추출
+                        printf ("  크기: %d Bytes\n",FileSize);
                         // 삭제된 파일 크기 출력
 
                         int Cluster;
@@ -95,15 +99,19 @@ int main(){
                         Cluster = Cluster + buf[offset+27] * 16 * 16;
                         Cluster = Cluster + buf[offset+26];
 
-                        loc.QuadPart = ((Cluster - 2) * ClusterPerSector + RootDirStr) * 512;
-                        printf(" %d \n",((Cluster - 2) * ClusterPerSector + RootDirStr) * 512);
+                        loc.QuadPart = ((Cluster - 2) * ClusterPerSector + RootDirStr) * 512;;
                         SetFilePointerEx(fp, loc, 0, 0);
                         ReadFile(fp,buf,512,0,0);
+                        // 삭제된 파일 위치 이동
 
-    int x;
-    for (x=0; x<=511; x++){
-        printf("%X ",buf[x]);
-    }
+                        strcat(RecoverFileName,".Bin");
+                        FILE *output = fopen(RecoverFileName,"wb");
+                        for (j=0; j<FileSize; j++)
+                        {
+                            fputc(buf[j], output);
+                        } // 삭제된 파일 복구
+                        
+                        printf("[RECOVER] 삭제된 파일을 복구했습니다. (%s)\n",RecoverFileName);
                     }
                 }
             }
