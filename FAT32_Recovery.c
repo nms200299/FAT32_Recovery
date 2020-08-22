@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <windows.h>
 
 int main(int argc, char* argv[]){
@@ -6,7 +7,8 @@ int main(int argc, char* argv[]){
 		printf ("Use : FAT32.exe <DriveName>\n");
         printf ("(ex. FAT32.exe E");
 		return 0;
-	} // 인자 값이 부족하면 사용법을 안내한다.
+	}
+    // 인자 값이 부족하면 사용법을 안내한다.
 
     HANDLE fp;
     BOOL Chk;
@@ -23,6 +25,7 @@ int main(int argc, char* argv[]){
     } else {
         printf("[INFO] %s 드라이브를 읽을 수 있습니다.\n", argv[1]);
     }
+    // 파일 핸들을 생성한다.
 
     Chk = ReadFile(fp,buf,512,0,0);
     if ((int)Chk == 0){
@@ -31,6 +34,7 @@ int main(int argc, char* argv[]){
     } else {
         printf("[INFO] 파일 시스템 데이터를 읽어왔습니다.\n");
     }
+    // 파일 시스템의 Boot Record를 읽어온다.
 
     if ((buf[0]==0xEB) && (buf[1]==0x58) && (buf[2]==0x90)) {
     // CPU Jump Command 체크
@@ -48,32 +52,38 @@ int main(int argc, char* argv[]){
 
     int ClusterPerSector;
     ClusterPerSector = buf[13];
+    // 클러스터 당 섹터 값 추출
 
     int ReservedSec;
     ReservedSec = buf[15] * 16 * 16;
     ReservedSec = ReservedSec + buf[14];
+    // 예약 섹터 값 추출
 
     int FatSize;
     FatSize = buf[39] * 16 * 16 * 16 * 16 * 16 * 16;
     FatSize = FatSize + buf[38] * 16 * 16 * 16 * 16;
     FatSize = FatSize + buf[37] * 16 * 16;
     FatSize = FatSize + buf[36];
+    // FAT 크기 추출
 
     int RootDirStr;
     RootDirStr = ReservedSec; // (ReservedSec + BR)
     RootDirStr = RootDirStr + FatSize;
     RootDirStr = RootDirStr + FatSize;
     printf("[INFO] 루트 디렉터리 섹터 : %d \n",RootDirStr);
+    // 루트 디렉터리 섹터 계산
 
     LARGE_INTEGER loc;
     loc.QuadPart = (RootDirStr * 512);
     SetFilePointerEx(fp, loc, 0, 0);
     ReadFile(fp,buf,512,0,0);
+    // 루트 디렉터리 이동
 
     int i, offset;
     for(i=0; i<=15; i++){
         offset = i * 32;
-        if (buf[offset] == 0xE5){ // 삭제된 파일일시,
+        if (buf[offset] == 0xE5){
+        // 삭제된 파일이면 복구를 진행.
             if (buf[offset+11] == 0x20){
                 if (buf[offset-21] != 0x0F){
                     int FileSize;
@@ -85,6 +95,7 @@ int main(int argc, char* argv[]){
                     if (FileSize > 0) {
                         printf ("[FIND] 삭제된 파일을 찾았습니다.\n");
                         printf ("       파일명: _");
+                        // 삭제된 파일 이름의 맨 첫 바이트는 Status Byte로 훼손됨. 
                 
                         int j;
                         char RecoverFileName[256]={};
@@ -94,12 +105,16 @@ int main(int argc, char* argv[]){
                             if (buf[offset+j] == 0x20) break;
                             RecoverFileName[j+10] = buf[offset+j];
                             printf ("%c",buf[offset+j]);
-                        } // 삭제된 파일 이름 추출
+                        }
+                        // 삭제된 파일 이름 추출
+
                         printf (".");
                         for (j=8; j<=11; j++){
                             if (buf[offset+j] == 0x20) break;
                             printf ("%c",buf[offset+j]);
-                        } // 삭제된 파일 확장자 추출
+                        }
+                        // 삭제된 파일 확장자 추출
+
                         printf ("  크기: %d Bytes\n",FileSize);
                         // 삭제된 파일 크기 출력
 
@@ -108,6 +123,7 @@ int main(int argc, char* argv[]){
                         Cluster = Cluster + buf[offset+20] * 16 * 16 * 16 * 16;
                         Cluster = Cluster + buf[offset+27] * 16 * 16;
                         Cluster = Cluster + buf[offset+26];
+                        // 파일의 클러스터 추출
 
                         loc.QuadPart = ((Cluster - 2) * ClusterPerSector + RootDirStr) * 512;;
                         SetFilePointerEx(fp, loc, 0, 0);
@@ -119,16 +135,21 @@ int main(int argc, char* argv[]){
                         for (j=0; j<FileSize; j++)
                         {
                             fputc(buf[j], output);
-                        } // 삭제된 파일 복구
-                        
+                        }
                         printf("[RECOVER] 삭제된 파일을 복구했습니다. (%s)\n",RecoverFileName);
+                        // 삭제된 파일 덤프
+
+                        loc.QuadPart = (RootDirStr * 512);
+                        SetFilePointerEx(fp, loc, 0, 0);
+                        ReadFile(fp,buf,512,0,0);
+                        // 파일 포인터 복구
                     }
                 }
             }
         }
     }
 
-
-
     CloseHandle(fp);
+    // 파일 핸들을 닫음
+    return 0;
 }
