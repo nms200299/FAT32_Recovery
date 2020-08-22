@@ -18,7 +18,9 @@ int main(int argc, char* argv[]){
     strcat(DrivePath,argv[1]);
     strcat(DrivePath,":");
 
-    fp = CreateFile(DrivePath, GENERIC_READ || GENERIC_WRITE, FILE_SHARE_READ || FILE_SHARE_WRITE, 0, OPEN_EXISTING, 0, 0);
+    fp = CreateFile(DrivePath, GENERIC_READ || GENERIC_WRITE,
+    FILE_SHARE_READ || FILE_SHARE_WRITE, 0, OPEN_EXISTING, 0, 0);
+
     if (fp == INVALID_HANDLE_VALUE){
         printf("[ERR] %s 드라이브를 읽을 수 없습니다.\n", argv[1]);
         return -1;
@@ -125,7 +127,7 @@ int main(int argc, char* argv[]){
                         Cluster = Cluster + buf[offset+26];
                         // 파일의 클러스터 추출
 
-                        loc.QuadPart = ((Cluster - 2) * ClusterPerSector + RootDirStr) * 512;;
+                        loc.QuadPart = ((Cluster - 2) * ClusterPerSector + RootDirStr) * 512;
                         SetFilePointerEx(fp, loc, 0, 0);
                         ReadFile(fp,buf,512,0,0);
                         // 삭제된 파일 위치 이동
